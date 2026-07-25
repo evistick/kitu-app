@@ -1,0 +1,6 @@
+{
+  "appId": "com.kitu.app",
+  "appName": "Kitu",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

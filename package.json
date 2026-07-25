@@ -1,0 +1,17 @@
+{
+  "name": "kitu-app",
+  "version": "1.0.0",
+  "description": "Plataforma para servicios profesionales a domicilio.",
+  "main": "app.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@capacitor/ios": "^6.2.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  }
+}
