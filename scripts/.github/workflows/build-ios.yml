@@ -1,0 +1,54 @@
+name: Build iOS IPA para LiveContainer
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Construir proyecto
+        run: npm run build
+
+      - name: Generar Proyecto iOS
+        run: npx cap add ios
+
+      - name: Instalar CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Compilar App
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -derivedDataPath derived_data CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Empaquetar a .ipa
+        run: |
+          cd ios/App
+          APP_PATH=$(find derived_data -name "App.app" -type d | head -n 1)
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r Kitu.ipa Payload
+
+      - name: Subir IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kitu-iOS-IPA
+          path: ios/App/Kitu.ipa
+          retention-days: 7
