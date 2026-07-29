@@ -961,7 +961,11 @@ function timeAgo(dateString) {
 // INIT
 // ============================================
 
-document.addEventListener('DOMContentLoaded', splashThenInit);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', splashThenInit);
+} else {
+    splashThenInit();
+}
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {

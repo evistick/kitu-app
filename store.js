@@ -76,6 +76,9 @@ class Store {
             });
         } catch (e) {
             console.error('Error al inicializar Supabase:', e);
+            if (typeof window !== 'undefined' && window.alert) {
+                window.alert('No se pudo conectar al servidor. Revisa tu conexión o las credenciales de Supabase.');
+            }
         }
     }
 
