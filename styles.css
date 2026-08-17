@@ -313,6 +313,31 @@ body {
     text-transform: uppercase; letter-spacing: 0.5px;
 }
 
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.password-wrapper input {
+    flex: 1;
+    padding-right: 48px;
+}
+.toggle-password {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 2;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.toggle-password:hover {
+    opacity: 1;
+}
+
 .input-group input, .input-group textarea, .input-group select {
     width: 100%; padding: 15px 18px;
     background: var(--bg-tertiary); border: 1.5px solid var(--border);
@@ -612,7 +637,7 @@ textarea { resize: vertical; min-height: 80px; }
 
 .provider-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 
-.provider-profile { text-align: center; padding: 10px 0; }
+.provider-profile { text-align: center; padding: 10px 0; position: relative; }
 .provider-mini {
     display: flex; align-items: center; gap: 12px;
     padding: 14px; background: var(--card); border: 1px solid var(--border);
@@ -927,3 +952,199 @@ textarea { resize: vertical; min-height: 80px; }
     transition: all var(--transition);
 }
 .step-line.done { background: var(--success); }
+
+/* ============ REDISE�O UBER / DOORDASH ============ */
+.home-header { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.location-bar {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 16px; background: var(--card); border-radius: 99px;
+    font-size: 13px; font-weight: 600; width: fit-content; margin: 0 auto;
+    border: 1px solid var(--border); cursor: pointer; transition: background 0.2s;
+}
+.location-bar:active { background: var(--card-hover); transform: scale(0.98); }
+.location-bar svg { color: var(--accent); }
+
+.search-hero { margin: 10px 0 24px; text-align: center; }
+.search-hero h1 { font-size: 28px; font-weight: 800; margin-bottom: 16px; line-height: 1.1; }
+
+.horizontal-scroll {
+    display: flex; overflow-x: auto; gap: 16px; padding-bottom: 12px;
+    margin: 0 -20px; padding-left: 20px; padding-right: 20px;
+    scroll-snap-type: x mandatory; scrollbar-width: none;
+}
+.horizontal-scroll::-webkit-scrollbar { display: none; }
+.service-cat-card {
+    flex: 0 0 76px; display: flex; flex-direction: column; align-items: center;
+    gap: 8px; scroll-snap-align: start; cursor: pointer;
+}
+.service-cat-icon {
+    width: 64px; height: 64px; border-radius: 20px;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 28px;
+    transition: all var(--transition);
+}
+.service-cat-card:active .service-cat-icon { transform: scale(0.9); background: var(--card-hover); }
+.service-cat-title { font-size: 12px; font-weight: 600; text-align: center; line-height: 1.1; color: var(--text-secondary); }
+
+.promo-banner {
+    background: var(--accent-gradient); border-radius: var(--radius-lg);
+    padding: 20px; color: white; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px; box-shadow: var(--shadow-accent); position: relative; overflow: hidden;
+}
+.promo-banner::after {
+    content: "???"; position: absolute; right: -10px; bottom: -20px; font-size: 100px; opacity: 0.2; transform: rotate(-15deg);
+}
+.promo-banner h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.promo-banner p { font-size: 13px; opacity: 0.9; }
+
+/* BOTTOM SHEET */
+.uber-bottom-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; max-width: 500px; margin: 0 auto;
+    background: var(--bg-secondary); border-radius: 28px 28px 0 0;
+    padding: 24px; z-index: 1000;
+    transform: translateY(100%);
+    animation: slideUpSheet 0.4s var(--transition-spring) forwards;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    max-height: 90vh; overflow-y: auto;
+    border: 1px solid var(--border);
+    border-bottom: none;
+}
+.sheet-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; max-width: 500px; margin: 0 auto;
+    background: rgba(0,0,0,0.6); z-index: 999;
+    animation: fadeIn 0.3s ease forwards; backdrop-filter: blur(4px);
+}
+@keyframes slideUpSheet { to { transform: translateY(0); } }
+.sheet-handle {
+    width: 48px; height: 5px; background: var(--border-active);
+    border-radius: 5px; margin: 0 auto 20px;
+}
+.mini-map {
+    height: 180px; border-radius: 16px; margin-bottom: 20px;
+    background: var(--card); border: 1px solid var(--border); overflow: hidden; z-index: 1;
+}
+
+/* ============ TIMELINE ============ */
+.timeline { position: relative; padding-top: 4px; }
+.timeline-step { display: flex; align-items: flex-start; gap: 12px; position: relative; }
+.timeline-dot {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-tertiary); border: 1.5px solid var(--border);
+    font-size: 15px; color: var(--text-tertiary);
+    transition: all var(--transition);
+}
+.timeline-step.done .timeline-dot {
+    background: var(--success-bg); border-color: var(--success); color: var(--success);
+}
+.timeline-step.active .timeline-dot {
+    border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow);
+}
+.timeline-line {
+    width: 2px; flex-shrink: 0; margin-left: 16px; height: 28px;
+    background: var(--border);
+}
+.timeline-line.done { background: var(--success); }
+.timeline-content { padding-top: 6px; }
+.timeline-label { font-size: 14px; font-weight: 600; }
+.timeline-date { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+/* ============ QUOTE BOX ============ */
+.quote-box {
+    background: var(--accent-gradient); border-radius: var(--radius-lg);
+    padding: 18px; color: white; position: relative; overflow: hidden;
+}
+.quote-box h3 { color: rgba(255,255,255,0.8); }
+.quote-price { font-size: 32px; font-weight: 800; margin: 4px 0; letter-spacing: -1px; }
+.quote-note { font-style: italic; opacity: 0.9; font-size: 13px; margin-top: 4px; }
+.quote-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.quote-actions .btn-primary { background: white; color: #007aff; box-shadow: none; }
+.quote-actions .btn-danger { background: rgba(0,0,0,0.2); border-color: transparent; color: white; }
+
+/* ============ FILTER BAR ============ */
+.filter-bar {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px;
+    margin: 0 -20px; padding-left: 20px; padding-right: 20px; scrollbar-width: none;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.filter-chip {
+    flex-shrink: 0; padding: 9px 16px; border-radius: 99px;
+    border: 1.5px solid var(--border); background: var(--bg-tertiary);
+    color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: var(--font); transition: all var(--transition-spring); white-space: nowrap;
+}
+.filter-chip:active { transform: scale(0.94); }
+.filter-chip.active {
+    background: var(--accent); border-color: var(--accent); color: white;
+    box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+/* ============ WALLET ============ */
+.wallet-cards { margin-top: 8px; }
+.wallet-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px;
+}
+.wallet-card.main {
+    background: var(--accent-gradient); border: none; color: white;
+    box-shadow: var(--shadow-accent); margin-bottom: 12px;
+}
+.wallet-card-label {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-tertiary); margin-bottom: 8px;
+}
+.wallet-card.main .wallet-card-label { color: rgba(255,255,255,0.8); }
+.wallet-balance { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; }
+.wallet-card-sub { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+.wallet-cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wallet-card.small .wallet-value { font-size: 20px; font-weight: 800; }
+.wallet-card.small .wallet-card-label { font-size: 10px; }
+
+.transactions-list { margin-top: 4px; }
+.transaction-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.transaction-icon {
+    width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+    background: var(--bg-tertiary); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.transaction-info { flex: 1; min-width: 0; }
+.transaction-amount { font-weight: 800; font-size: 15px; }
+.transaction-amount.positive { color: var(--success); }
+.transaction-amount.negative { color: var(--text-secondary); }
+
+/* ============ PAYMENT METHODS ============ */
+.payments-list { margin-top: 4px; }
+.payment-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px; margin-bottom: 10px;
+}
+.payment-brand {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: var(--accent-gradient); display: flex; align-items: center;
+    justify-content: center; font-size: 20px; color: white;
+}
+.payment-info { flex: 1; min-width: 0; }
+.btn-text.danger { color: var(--danger); }
+
+/* ============ ADDRESS BOOK ============ */
+.addresses-list { margin-top: 4px; }
+.address-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px; margin-bottom: 10px;
+}
+.address-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(0, 122, 255, 0.12); display: flex; align-items: center;
+    justify-content: center; font-size: 20px;
+}
+.address-info { flex: 1; min-width: 0; }
+
+/* ============ FAVORITES ============ */
+.fav-toggle { position: relative; }
+.fav-toggle.active { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+

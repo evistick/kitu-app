@@ -5,6 +5,8 @@
 
 -- Habilitar extensión UUID si no está habilitada
 create extension if not exists "uuid-ossp";
+-- Habilitar extensión PostGIS para búsqueda geoposicionada (Punto 2)
+create extension if not exists "postgis";
 
 -- 1. TABLA DE PERFILES (profiles)
 -- Sincronizada con auth.users de Supabase
@@ -16,6 +18,7 @@ create table public.profiles (
     role text not null check (role in ('client', 'provider', 'admin')),
     address text,
     avatar_url text,
+    is_verified boolean default false, -- Verificación KYC (Punto 3)
     country_code text default 'MX' check (char_length(country_code) = 2),
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -44,7 +47,8 @@ create table public.providers_details (
     earnings numeric default 0 not null,
     is_available boolean default true not null,
     latitude double precision,
-    longitude double precision
+    longitude double precision,
+    location geography(Point, 4326) -- PostGIS Location (Punto 2)
 );
 
 -- Habilitar RLS en providers_details
@@ -67,11 +71,14 @@ create table public.service_requests (
     service_id text not null, -- ej. 'plumbing', 'electrician'
     service_title text not null,
     description text not null,
-    photo_url text,
-    urgency text not null check (urgency in ('low', 'normal', 'urgent')),
+    photo_urls text[] default '{}'::text[], -- Soporte para múltiples fotos/videos (Punto 3)
+    urgency text not null check (urgency in ('low', 'normal', 'urgent', 'scheduled')),
+    scheduled_time timestamp with time zone, -- Sistema de agenda (Punto 2)
     address text not null,
     status text default 'pending' not null check (status in ('pending', 'accepted', 'in_progress', 'completed', 'cancelled')),
     price numeric,
+    payment_status text default 'pending' check (payment_status in ('pending', 'escrow', 'paid', 'refunded')), -- Pagos Integrados (Punto 2)
+    payment_intent_id text,
     rating numeric(2,1) check (rating >= 1.0 and rating <= 5.0),
     review text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -162,3 +169,42 @@ $$ language plpgsql security definer;
 create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Función de búsqueda geográfica (PostGIS)
+create or replace function get_nearby_providers(
+    search_lat double precision,
+    search_lng double precision,
+    radius_meters double precision,
+    required_profession text
+) returns table (
+    id uuid,
+    name text,
+    distance double precision,
+    rate_per_hour numeric,
+    rating numeric
+) as $$
+begin
+    return query
+    select
+        p.id,
+        p.name,
+        st_distance(
+            pd.location,
+            st_point(search_lng, search_lat)::geography
+        ) as distance,
+        pd.rate_per_hour,
+        pd.rating
+    from public.profiles p
+    join public.providers_details pd on p.id = pd.id
+    where p.role = 'provider'
+      and pd.is_available = true
+      and required_profession = any(pd.professions)
+      and st_dwithin(
+          pd.location,
+          st_point(search_lng, search_lat)::geography,
+          radius_meters
+      )
+    order by distance asc;
+end;
+$$ language plpgsql security definer;
+

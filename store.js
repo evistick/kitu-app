@@ -14,7 +14,10 @@ const defaultState = {
     requests: [],
     notifications: [],
     chatMessages: {},
-    ratings: []
+    ratings: [],
+    favorites: [],
+    paymentMethods: [],
+    addressBook: []
 };
 
 const STATUS_LABELS = {
@@ -196,6 +199,9 @@ class Store {
     }
 
     _mapRequest(dbReq) {
+        // Preservar campos locales que Supabase aún no tiene (scheduledAt, quote, timeline)
+        const local = (this._state.requests || []).find(r => r.id === dbReq.id) || {};
+        const timeline = local.statusTimeline || {};
         return {
             id: dbReq.id,
             clientId: dbReq.client_id,
@@ -213,7 +219,15 @@ class Store {
             review: dbReq.review,
             price: dbReq.price,
             createdAt: dbReq.created_at,
-            updatedAt: dbReq.updated_at
+            updatedAt: dbReq.updated_at,
+            scheduledAt: dbReq.scheduled_at || local.scheduledAt || null,
+            quote: dbReq.quote !== undefined && dbReq.quote !== null ? dbReq.quote : (local.quote || null),
+            quoteStatus: dbReq.quote_status || local.quoteStatus || 'none',
+            paymentMethodId: dbReq.payment_method_id || local.paymentMethodId || null,
+            statusTimeline: {
+                ...timeline,
+                ...(dbReq.status && dbReq.created_at ? { created: dbReq.created_at } : {})
+            }
         };
     }
 
@@ -474,7 +488,14 @@ class Store {
                 .single();
             if (error) throw error;
 
-            const mapped = this._mapRequest(data);
+            const mapped = {
+                ...this._mapRequest(data),
+                scheduledAt: requestData.scheduledAt || null,
+                paymentMethodId: requestData.paymentMethodId || null,
+                quote: requestData.quote || null,
+                quoteStatus: requestData.quoteStatus || 'none',
+                statusTimeline: { created: data.created_at }
+            };
             this.set('requests', [...this._state.requests, mapped]);
             this.addNotification(`Solicitud de ${mapped.serviceTitle} creada. Buscando profesionales...`, 'info');
             return mapped;
@@ -495,6 +516,11 @@ class Store {
                 rating: null,
                 review: null,
                 price: null,
+                scheduledAt: requestData.scheduledAt || null,
+                paymentMethodId: requestData.paymentMethodId || null,
+                quote: requestData.quote || null,
+                quoteStatus: requestData.quoteStatus || 'none',
+                statusTimeline: { created: new Date().toISOString() },
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -506,6 +532,17 @@ class Store {
     }
 
     async updateRequest(requestId, updates) {
+        // Registrar línea de tiempo cuando cambia el estado
+        if (updates.status) {
+            const timeline = (this._state.requests.find(r => r.id === requestId) || {}).statusTimeline || {};
+            if (!timeline[updates.status]) {
+                updates.statusTimeline = {
+                    ...timeline,
+                    [updates.status]: new Date().toISOString()
+                };
+            }
+        }
+
         if (CONFIG.DATABASE_MODE === 'supabase') {
             const dbUpdates = {};
             const fieldMapping = {
@@ -520,11 +557,18 @@ class Store {
                     dbUpdates[fieldMapping[key]] = updates[key];
                 }
             });
-            const { error } = await this.supabase
-                .from('service_requests')
-                .update(dbUpdates)
-                .eq('id', requestId);
-            if (error) throw error;
+            if (dbUpdates.status || dbUpdates.provider_id || dbUpdates.price !== undefined) {
+                const { error } = await this.supabase
+                    .from('service_requests')
+                    .update(dbUpdates)
+                    .eq('id', requestId);
+                if (error) throw error;
+            }
+            // Aplicar campos locales (cita, cotización, timeline) sin enviarlos a Supabase
+            const requests = this._state.requests.map(r =>
+                r.id === requestId ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r
+            );
+            this.set('requests', requests);
         } else {
             const requests = this._state.requests.map(r =>
                 r.id === requestId ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r
@@ -682,8 +726,113 @@ class Store {
     getProviderRatings(providerId) {
         return this._state.ratings.filter(r => r.providerId === providerId);
     }
+
+    // Favorites
+    isFavorite(providerId) {
+        return (this._state.favorites || []).includes(providerId);
+    }
+
+    toggleFavorite(providerId) {
+        const favorites = (this._state.favorites || []).slice();
+        const idx = favorites.indexOf(providerId);
+        if (idx > -1) favorites.splice(idx, 1); else favorites.push(providerId);
+        this.set('favorites', favorites);
+        return favorites.includes(providerId);
+    }
+
+    getFavorites() {
+        return (this._state.favorites || []).slice();
+    }
+
+    // Payment Methods
+    getPaymentMethods() {
+        return (this._state.paymentMethods || []).slice();
+    }
+
+    addPaymentMethod(method) {
+        const list = this._state.paymentMethods || [];
+        const newMethod = {
+            id: 'pm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            ...method,
+            createdAt: new Date().toISOString()
+        };
+        const paymentMethods = [...list, newMethod];
+        this.set('paymentMethods', paymentMethods);
+        this.addNotification('Método de pago agregado.', 'success');
+        return newMethod;
+    }
+
+    removePaymentMethod(id) {
+        this.set('paymentMethods', (this._state.paymentMethods || []).filter(m => m.id !== id));
+    }
+
+    getPaymentMethod(id) {
+        return (this._state.paymentMethods || []).find(m => m.id === id);
+    }
+
+    // Address Book
+    getAddressBook() {
+        return (this._state.addressBook || []).slice();
+    }
+
+    addAddress(address) {
+        const list = this._state.addressBook || [];
+        const newAddress = {
+            id: 'addr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            ...address,
+            createdAt: new Date().toISOString()
+        };
+        const addressBook = [...list, newAddress];
+        this.set('addressBook', addressBook);
+        this.addNotification('Dirección guardada.', 'success');
+        return newAddress;
+    }
+
+    updateAddress(id, updates) {
+        this.set('addressBook', (this._state.addressBook || []).map(a =>
+            a.id === id ? { ...a, ...updates } : a
+        ));
+    }
+
+    removeAddress(id) {
+        this.set('addressBook', (this._state.addressBook || []).filter(a => a.id !== id));
+    }
+
+    getAddress(id) {
+        return (this._state.addressBook || []).find(a => a.id === id);
+    }
+
+    // Wallet / Earnings
+    getWalletStats() {
+        const userId = this._state.user?.id;
+        const isProvider = this._state.role === 'provider';
+        const myRequests = this._state.requests.filter(r =>
+            isProvider ? r.providerId === userId : r.clientId === userId
+        );
+
+        const completed = myRequests.filter(r => r.status === 'completed');
+        const active = myRequests.filter(r => ['pending', 'accepted', 'in_progress'].includes(r.status));
+
+        const totalEarned = isProvider
+            ? completed.reduce((sum, r) => sum + (Number(r.price) || 0), 0)
+            : completed.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
+
+        const pendingBalance = active.reduce((sum, r) => sum + (Number(r.price) || 0), 0);
+
+        return {
+            totalJobs: completed.length,
+            activeJobs: active.length,
+            totalEarned,
+            pendingBalance,
+            avgRating: this._state.user?.rating || 5.0,
+            transactions: completed.slice().reverse()
+        };
+    }
 }
 
 export const store = new Store();
 store.CONFIG = CONFIG;
 store.getActiveSettings = getActiveSettings;
+if (typeof window !== 'undefined') {
+    window.store = store;
+}

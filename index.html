@@ -65,14 +65,19 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <!-- App Integration -->
-    <script type="module">
-        import { store } from './store.js';
-        window.store = store;
-
-        // Cargar app.js dinámicamente una vez que store esté disponible en window
-        const script = document.createElement('script');
-        script.src = 'app.js';
-        document.body.appendChild(script);
+    <script>
+        // Si abres el archivo directamente (file://), los módulos ES están bloqueados
+        // por el navegador. Usamos un bundle standalone que no necesita módulos.
+        if (window.location.protocol === 'file:') {
+            var s = document.createElement('script');
+            s.src = 'standalone-app.js';
+            document.body.appendChild(s);
+        } else {
+            var m = document.createElement('script');
+            m.type = 'module';
+            m.textContent = "import('./store.js').then(m => { window.store = m.store; }).catch(e => { console.error('Error loading store:', e); }).finally(() => { const script = document.createElement('script'); script.src = 'app.js'; document.body.appendChild(script); });";
+            document.body.appendChild(m);
+        }
     </script>
 </body>
 </html>
