@@ -483,6 +483,108 @@ function renderProviderHome() {
     viewContainer.innerHTML = '<div class="fade-in"><h1 class="greeting">Panel <span class="accent">Profesional</span></h1><div class="stats-grid"><div class="stat-card" onclick="navigate(\'wallet\')" style="cursor:pointer"><div class="stat-value">' + formatCurrency(user?.earnings || 0) + '</div><div class="stat-label">Ganancias 💰</div></div><div class="stat-card"><div class="stat-value">' + (user?.totalJobs || 0) + '</div><div class="stat-label">Trabajos</div></div><div class="stat-card"><div class="stat-value">⭐ ' + ((user?.rating || 5.0).toFixed(1)) + '</div><div class="stat-label">Rating</div></div></div><div class="section"><h2 class="section-title">Tus Profesiones</h2><div class="chips-row">' + chipsHTML + '</div></div>' + pendingHTML + activeHTML + emptyHTML + '</div>';
 }
 
+// ---- MAP LOCATION PICKER (Fullscreen) ----
+window.openMapPicker = function (initialCoords, onConfirm) {
+    if (typeof L === 'undefined') {
+        showToast('No se pudo cargar el mapa. Revisa tu conexión.', 'error');
+        return;
+    }
+
+    var lat = initialCoords?.lat || store.get('user')?.lat || CONFIG.DEFAULT_LAT || 19.4326;
+    var lng = initialCoords?.lng || store.get('user')?.lng || CONFIG.DEFAULT_LNG || -99.1332;
+
+    var overlay = document.createElement('div');
+    overlay.className = 'map-picker-overlay';
+    overlay.innerHTML = '<div class="map-picker-header"><button class="btn-icon" id="mp-close">✕</button><h2>Elige tu ubicación</h2><span class="mp-gps-status" id="mp-gps-status"></span></div>' +
+        '<div class="map-picker-map" id="mp-map"></div>' +
+        '<button class="map-locate-btn" id="mp-locate" aria-label="Ir a mi ubicación"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><circle cx="12" cy="12" r="9" opacity="0.4"></circle><line x1="12" y1="1" x2="12" y2="5"></line><line x1="12" y1="19" x2="12" y2="23"></line><line x1="1" y1="12" x2="5" y2="12"></line><line x1="19" y1="12" x2="23" y2="12"></line></svg></button>' +
+        '<div class="map-picker-footer"><div class="mp-address-label" id="mp-address">Obteniendo dirección...</div><button class="btn-primary" id="mp-confirm">✅ Confirmar ubicación</button></div>';
+
+    document.body.appendChild(overlay);
+
+    var map = L.map('mp-map', { zoomControl: false }).setView([lat, lng], 16);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+
+    var marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+
+    var addressEl = document.getElementById('mp-address');
+    var gpsStatusEl = document.getElementById('mp-gps-status');
+    var resolvedAddress = null;
+    var geocodeSeq = 0;
+
+    function coordsLabel(ll) {
+        return ll.lat.toFixed(5) + ', ' + ll.lng.toFixed(5);
+    }
+
+    function updateAddress() {
+        var ll = marker.getLatLng();
+        resolvedAddress = null;
+        addressEl.textContent = '📍 ' + coordsLabel(ll);
+        var seq = ++geocodeSeq;
+        // Reverse geocoding para dirección legible
+        fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + ll.lat + '&lon=' + ll.lng + '&accept-language=' + (getActiveSettings() ? getActiveSettings().locale.split('-')[0] : 'es'))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (seq !== geocodeSeq) return;
+                if (d && d.display_name) {
+                    var parts = d.display_name.split(', ').slice(0, 3).join(', ');
+                    resolvedAddress = parts;
+                    addressEl.textContent = '📍 ' + parts;
+                }
+            })
+            .catch(function () { });
+    }
+
+    updateAddress();
+
+    marker.on('dragend', updateAddress);
+    map.on('click', function (e) {
+        marker.setLatLng(e.latlng);
+        updateAddress();
+    });
+
+    // Botón "Ir a mi ubicación actual" (derecha)
+    document.getElementById('mp-locate').addEventListener('click', function () {
+        if (!navigator.geolocation) {
+            showToast('Tu navegador no soporta geolocalización.', 'error');
+            return;
+        }
+        gpsStatusEl.textContent = 'Buscando...';
+        gpsStatusEl.classList.add('loading');
+        navigator.geolocation.getCurrentPosition(function (pos) {
+            var clat = pos.coords.latitude;
+            var clng = pos.coords.longitude;
+            marker.setLatLng([clat, clng]);
+            map.setView([clat, clng], 17);
+            located = true;
+            gpsStatusEl.textContent = '📍';
+            gpsStatusEl.classList.remove('loading');
+            updateAddress();
+            showToast('Esta es tu ubicación actual.', 'success');
+        }, function (err) {
+            gpsStatusEl.textContent = '';
+            gpsStatusEl.classList.remove('loading');
+            showToast('No se pudo obtener tu ubicación. Activa el GPS y los permisos.', 'warning');
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+    });
+
+    // Cerrar
+    function closePicker() {
+        overlay.remove();
+        map.remove();
+    }
+    document.getElementById('mp-close').addEventListener('click', closePicker);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closePicker(); });
+
+    // Confirmar
+    document.getElementById('mp-confirm').addEventListener('click', function () {
+        var ll = marker.getLatLng();
+        var addr = resolvedAddress || coordsLabel(ll);
+        closePicker();
+        if (onConfirm) onConfirm({ lat: ll.lat, lng: ll.lng, address: addr });
+    });
+};
+
 // ---- NEW REQUEST (Uber Bottom Sheet style) ----
 window.openNewRequestSheet = function (serviceId) {
     var service = SERVICES.find(function (s) { return s.id === serviceId; }) || SERVICES[0];
@@ -522,7 +624,7 @@ window.openNewRequestSheet = function (serviceId) {
         '<h2 style="font-size: 20px; font-weight:800;">' + service.icon + ' ' + service.title + '</h2>' +
         '<button class="btn-icon" id="close-sheet">✕</button>' +
         '</div>' +
-        '<div class="mini-map" id="sheet-map"></div>' +
+        '<div class="mini-map" id="sheet-map"><div class="mini-map-hint">📍 Toca para elegir tu ubicación</div><button type="button" class="mini-map-locate" id="mini-locate" aria-label="Ir a mi ubicación">🎯</button></div>' +
         '<form id="request-form">' +
         addressBookHTML +
         '<div class="input-group"><input type="text" id="req-address" placeholder="Confirma tu ubicación..." value="' + userAddress + '" required style="font-weight:600; font-size:15px; padding:14px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:12px; width:100%; color:var(--text);"></div>' +
@@ -584,22 +686,46 @@ window.openNewRequestSheet = function (serviceId) {
         });
     }
 
+    // ---- Selector de ubicación en el mapa (mini + fullscreen) ----
+    var selectedCoords = null;
+    var miniMap = null;
+    var miniMarker = null;
+
+    function placeMiniMap(lat, lng) {
+        if (miniMap && miniMarker) {
+            miniMap.setView([lat, lng], 15);
+            miniMarker.setLatLng([lat, lng]);
+        }
+    }
+
     // Initialize Mini Map
     setTimeout(function () {
         var mapEl = document.getElementById('sheet-map');
         if (mapEl && window.L) {
             var lat = store.get('user')?.lat || CONFIG.DEFAULT_LAT || 19.4326;
             var lng = store.get('user')?.lng || CONFIG.DEFAULT_LNG || -99.1332;
-            var map = L.map('sheet-map', { zoomControl: false }).setView([lat, lng], 15);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
-            var marker = L.marker([lat, lng], { draggable: true }).addTo(map);
-
-            // Allow user to drag pin to update address text roughly
-            marker.on('dragend', function (e) {
-                document.getElementById('req-address').value = 'Ubicación seleccionada en el mapa';
-            });
+            miniMap = L.map('sheet-map', { zoomControl: false }).setView([lat, lng], 15);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(miniMap);
+            miniMarker = L.marker([lat, lng]).addTo(miniMap);
         }
     }, 400);
+
+    // Abrir el selector de ubicación a pantalla completa
+    function openLocationPicker() {
+        openMapPicker(selectedCoords, function (res) {
+            selectedCoords = { lat: res.lat, lng: res.lng };
+            document.getElementById('req-address').value = res.address;
+            placeMiniMap(res.lat, res.lng);
+            showToast('Ubicación confirmada 📍', 'success');
+        });
+    }
+
+    var sheetMapEl = document.getElementById('sheet-map');
+    sheetMapEl.addEventListener('click', openLocationPicker);
+    document.getElementById('mini-locate').addEventListener('click', function (e) {
+        e.stopPropagation();
+        openLocationPicker();
+    });
 
     document.getElementById('request-form').addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -623,6 +749,8 @@ window.openNewRequestSheet = function (serviceId) {
                 urgency: selectedUrgency, address: document.getElementById('req-address').value,
                 scheduledAt: scheduledAt,
                 paymentMethodId: selectedPaymentId,
+                lat: selectedCoords?.lat || null,
+                lng: selectedCoords?.lng || null,
                 photoData: null // Simplified for Uber style speed
             });
             showToast('Buscando profesionales cerca de ti...', 'success');

@@ -224,6 +224,8 @@ class Store {
             quote: dbReq.quote !== undefined && dbReq.quote !== null ? dbReq.quote : (local.quote || null),
             quoteStatus: dbReq.quote_status || local.quoteStatus || 'none',
             paymentMethodId: dbReq.payment_method_id || local.paymentMethodId || null,
+            lat: local.lat || null,
+            lng: local.lng || null,
             statusTimeline: {
                 ...timeline,
                 ...(dbReq.status && dbReq.created_at ? { created: dbReq.created_at } : {})
@@ -494,6 +496,8 @@ class Store {
                 paymentMethodId: requestData.paymentMethodId || null,
                 quote: requestData.quote || null,
                 quoteStatus: requestData.quoteStatus || 'none',
+                lat: requestData.lat || null,
+                lng: requestData.lng || null,
                 statusTimeline: { created: data.created_at }
             };
             this.set('requests', [...this._state.requests, mapped]);
@@ -520,6 +524,8 @@ class Store {
                 paymentMethodId: requestData.paymentMethodId || null,
                 quote: requestData.quote || null,
                 quoteStatus: requestData.quoteStatus || 'none',
+                lat: requestData.lat || null,
+                lng: requestData.lng || null,
                 statusTimeline: { created: new Date().toISOString() },
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
